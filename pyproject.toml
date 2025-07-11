@@ -10,6 +10,11 @@ requires-python = ">=3.10"
 dependencies = [
     "pywinauto>=0.6.9",
 ]
+license = "MIT"
+license-files = ["license"]
+
+[project.urls]
+repository = "https://github.com/Richienb/nor1029-controller.git"
 
 [build-system]
 requires = ["hatchling"]
