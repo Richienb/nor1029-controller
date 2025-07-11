@@ -1,0 +1,25 @@
+name: CI
+on:
+  - push
+  - pull_request
+jobs:
+  test:
+      name: Python ${{ matrix.python-version }}
+      runs-on: windows-latest
+      strategy:
+          fail-fast: false
+          matrix:
+            python-version:
+                - "3.13"
+                - "3.12"
+                - "3.11"
+                - "3.10"
+      steps:
+        - uses: actions/checkout@v4
+        - uses: astral-sh/setup-uv@v6
+          with:
+            python-version: ${{ matrix.python-version }}
+        - run: uv python install
+        - run: uv sync --locked --all-extras --dev
+        - run: uv run ruff check
+        - run: uv run src/nor1029_controller/__init__.py
