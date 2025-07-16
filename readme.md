@@ -76,6 +76,14 @@ with Nor1029Controller() as nor:
     nor.stop()
 ```
 
+### .start_rotate(angle, speed?, acceleration?)
+
+### .start_rotate_relative(angle, speed?, acceleration?)
+
+### .start_sweep(start_angle, stop_angle, duration, acceleration?)
+
+The `start_*` methods will return when the movement starts, while the regular methods will also wait for the movement to finish.
+
 ### .stop()
 
 Stop any ongoing movement.
@@ -83,6 +91,10 @@ Stop any ongoing movement.
 ### .go_home()
 
 Rotate back to the home position.
+
+### .is_moving
+
+*readonly*
 
 ### .close()
 

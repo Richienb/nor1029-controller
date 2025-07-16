@@ -364,18 +364,24 @@ class Nor1029Controller:
 	def rotations(self) -> float:
 		return self.sys.rotation
 
+	@property
+	def is_moving(self) -> bool:
+		return not self.sys.go_to_button.is_enabled()
+
 	def _wait_start(self):
-		if not self.sys.go_to_button.is_enabled():
+		if self.is_moving:
 			return
 
 		self.sys.go_to_button.wait_not("enabled", timeout=self.timeout)
 
-	def _wait_ready(self, wait_start: bool = True):
+	def _wait_ready(self):
 		self._wait_start()
 
 		self.sys.go_to_button.wait("enabled", timeout=self.timeout)
 
-	def rotate(self, angle: int | float, speed: int = None, acceleration: int = None):
+	def start_rotate(
+		self, angle: int | float, speed: int = None, acceleration: int = None
+	):
 		self.sys.go_to_angle = angle
 
 		if speed is not None:
@@ -386,9 +392,14 @@ class Nor1029Controller:
 
 		self.sys.go_to()
 
+		self._wait_start()
+
+	def rotate(self, angle: int | float, speed: int = None, acceleration: int = None):
+		self.start_rotate(angle, speed, acceleration)
+
 		self._wait_ready()
 
-	def rotate_relative(
+	def start_rotate_relative(
 		self, angle: int | float, speed: int = None, acceleration: int = None
 	):
 		self.sys.go_relative_angle = angle
@@ -401,9 +412,16 @@ class Nor1029Controller:
 
 		self.sys.go_relative()
 
+		self._wait_start()
+
+	def rotate_relative(
+		self, angle: int | float, speed: int = None, acceleration: int = None
+	):
+		self.start_rotate_relative(angle, speed, acceleration)
+
 		self._wait_ready()
 
-	def sweep(
+	def start_sweep(
 		self,
 		start_angle: int | float,
 		stop_angle: int | float,
@@ -419,6 +437,17 @@ class Nor1029Controller:
 			self.sys.sweep_acceleration = acceleration
 
 		self.sys.sweep()
+
+		self._wait_start()
+
+	def sweep(
+		self,
+		start_angle: int | float,
+		stop_angle: int | float,
+		duration: int,
+		acceleration: int = None,
+	):
+		self.start_sweep(start_angle, stop_angle, duration, acceleration)
 
 		self._wait_ready()
 
