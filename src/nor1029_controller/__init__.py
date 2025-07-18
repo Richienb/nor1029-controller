@@ -1,6 +1,7 @@
+from time import sleep
 from typing import Optional
 
-from pywinauto.application import Application
+import serial
 from enum import Enum
 
 
@@ -9,348 +10,259 @@ class RotationDirection(Enum):
 	COUNTER_CLOCKWISE = "Counterclockwise"
 
 
-class Nor1029Sys:
-	def __init__(self, filename, timeout):
-		self.filename = filename
+class OperationMode(Enum):
+	LOCAL = "Local operation"
+	REMOTE = "Remote operation"
+
+
+operationModeMap = {
+	"L": OperationMode.LOCAL,
+	"R": OperationMode.REMOTE,
+}
+
+
+class MotorStatus(Enum):
+	BUSY = "Busy"
+	READY = "Finished/Ready"
+
+
+motorStatusMap = {
+	"B": MotorStatus.BUSY,
+	"@": MotorStatus.READY,
+}
+
+
+class HomeStatus(Enum):
+	DETECTED = "Home detected"
+	UNCALIBRATED = "Uncalibrated angle reference"
+
+
+homeStatusMap = {
+	"H": HomeStatus.DETECTED,
+	"U": HomeStatus.UNCALIBRATED,
+}
+
+
+class Errors(Enum):
+	ANGLE = "Angle parameter out of range"
+	SPEED = "Speed parameter out of range"
+	SWEEP_TIME = "Sweep time parameter out of range"
+	ACCELERATION = "Acceleration parameter out of range"
+	SPEED_LIMIT = "Sweep limit parameter out of range"
+	RELATIVE_ANGLE = "Relative angle parameter out of range"
+	UNKNOWN = "Unknown command"
+	SPACE = "Missing space before parameter"
+	SWEEP_TIME_SHORT = "Sweep time too short"
+	ILLEGAL_WHILE_LOCAL = "Command is not legal while in local operation"
+	HOME_DETECTOR = "Home detector not found"
+	ILLEGAL = "llegal command during home process"
+	ILLEGAL_POSITION = "Illegal position for PP command"
+	BAUD = "Baud rate out of range"
+	# NONE = "OK – no error detected"
+
+
+errorMap = {
+	"A": Errors.ANGLE,
+	"S": Errors.SPEED,
+	"T": Errors.SWEEP_TIME,
+	"C": Errors.ACCELERATION,
+	"L": Errors.SPEED_LIMIT,
+	"R": Errors.RELATIVE_ANGLE,
+	"E": Errors.UNKNOWN,
+	"P": Errors.SPACE,
+	"W": Errors.SWEEP_TIME_SHORT,
+	"X": Errors.ILLEGAL_WHILE_LOCAL,
+	"N": Errors.HOME_DETECTOR,
+	"I": Errors.ILLEGAL,
+	"O": Errors.ILLEGAL_POSITION,
+	"B": Errors.BAUD,
+	# "@": None,  # OK – no error detected
+}
+
+
+class Nor265Sys:
+	def __init__(self, port, timeout, baudrate=9600):
+		self.port = port
 		self.timeout = timeout
+		self._baudrate = baudrate
 
 	def open(self):
-		self.app = Application(backend="uia").start(self.filename)
-		self.window = self.app.window(title="Nor1029")
-		self.window.wait("visible", timeout=self.timeout)
-
-		self.clear_button = self.window.child_window(
-			title="Clear", control_type="Button"
-		)
-		self.error_edit = self.window.child_window(control_type="Edit", found_index=0)
-
-		self.angle_edit = self.window.child_window(control_type="Edit", found_index=2)
-		self.rotation_edit = self.window.child_window(
-			control_type="Edit", found_index=1
+		self.ser = serial.Serial(
+			port=self.port,
+			baudrate=self._baudrate,
+			bytesize=serial.EIGHTBITS,
+			parity=serial.PARITY_NONE,
+			stopbits=serial.STOPBITS_ONE,
+			timeout=self.timeout,
 		)
 
-		self.stop_button = self.window.child_window(title="Stop", control_type="Button")
-		self.go_home_button = self.window.child_window(
-			title="Go Home", control_type="Button"
-		)
+	def _send_command(self, command: str, parameter: Optional[str] = None):
+		if parameter is None:
+			message = f"${command};"
+		else:
+			message = f"${command} {parameter};"
 
-		go_to_group = self.window.child_window(title="Go To", control_type="Group")
-		self.go_to_button = go_to_group.child_window(
-			title="Go To", control_type="Button"
-		)
-		self.go_to_angle_edit = go_to_group.child_window(
-			control_type="Edit", found_index=0
-		)
-		self.go_to_speed_edit = go_to_group.child_window(
-			control_type="Edit", found_index=2
-		)
-		self.go_to_acceleration_edit = go_to_group.child_window(
-			control_type="Edit", found_index=1
-		)
+		self.ser.write(message.encode())
 
-		go_relative_group = self.window.child_window(
-			title="Go Relative", control_type="Group"
-		)
-		self.go_relative_button = go_relative_group.child_window(
-			title="Go Relative", control_type="Button"
-		)
-		self.go_relative_angle_edit = go_relative_group.child_window(
-			control_type="Edit", found_index=0
-		)
-		self.go_relative_speed_edit = go_relative_group.child_window(
-			control_type="Edit", found_index=2
-		)
-		self.go_relative_acceleration_edit = go_relative_group.child_window(
-			control_type="Edit", found_index=1
-		)
+	def _read_line(self):
+		return self.ser.readline().decode().strip()
 
-		sweep_group = self.window.child_window(title="Sweep", control_type="Group")
-		self.sweep_button = sweep_group.child_window(
-			title="Start Sweep", control_type="Button"
-		)
-		self.sweep_start_angle_edit = sweep_group.child_window(
-			control_type="Edit", found_index=1
-		)
-		self.sweep_stop_angle_edit = sweep_group.child_window(
-			control_type="Edit", found_index=0
-		)
-		self.sweep_time_edit = sweep_group.child_window(
-			control_type="Edit", found_index=3
-		)
-		self.sweep_acceleration_edit = sweep_group.child_window(
-			control_type="Edit", found_index=2
-		)
+	def _send_request(self, command: str, parameter: Optional[str] = None) -> str:
+		self._send_command(command, parameter)
 
-		rotation_group = self.window.child_window(
-			title="Rotation", control_type="Group"
-		)
-		self.rotation_button = rotation_group.child_window(
-			title="Continuous Rotation", control_type="Button"
-		)
-		self.rotation_counterclockwise_radio_button = rotation_group.child_window(
-			title="Counterclockwise", control_type="RadioButton"
-		)
-		self.rotation_clockwise_radio_button = rotation_group.child_window(
-			title="Clockwise", control_type="RadioButton"
-		)
-		self.rotation_speed_edit = rotation_group.child_window(
-			control_type="Edit", found_index=0
-		)
-		self.rotation_acceleration_edit = rotation_group.child_window(
-			control_type="Edit", found_index=1
-		)
+		response = self._read_line()
+
+		return response
 
 	def close(self):
-		self.app.kill(soft=True)
+		self.ser.close()
 
-	@staticmethod
-	def _parse_angle(angle_str: str) -> float:
-		# "100°" -> 100
-		return float(angle_str[:-1])
-
-	@staticmethod
-	def _compose_angle(angle: int | float) -> str:
-		# 100 -> "100°"
-		return f"{angle}°"
-
-	@staticmethod
-	def _parse_speed(speed_str: str) -> int:
-		# "100 s/r" -> 100
-		return int(speed_str[:-3])
-
-	@staticmethod
-	def _compose_speed(speed: int) -> str:
-		# 100 -> "100 s/r"
-		return f"{speed} s/r"
-
-	@staticmethod
-	def _parse_secs(acceleration_str: str) -> int:
-		# "100 s" -> 100
-		return int(acceleration_str[:-1])
-
-	@staticmethod
-	def _compose_secs(acceleration: int) -> str:
-		# 100 -> "100 s"
-		return f"{acceleration} s"
+	def reset(self):
+		self._send_command("IR")
 
 	@property
-	def angle(self) -> float:
-		return self._parse_angle(self.angle_edit.get_value())
+	def status(self):
+		response = self._send_request("FS")
+
+		errors = []
+
+		for error_code in response[4:7]:
+			error = errorMap.get(error_code, None)
+
+			if error is not None:
+				errors.append(error)
+
+		return {
+			"operation_type": operationModeMap[response[0]],
+			"motor_status": motorStatusMap[response[1]],
+			"home_status": homeStatusMap[response[2]],
+			"errors": errors,
+		}
 
 	@property
-	def rotation(self) -> float:
-		return int(
-			# "100 turns" -> 100
-			self.rotation_edit.get_value()[:-6]
-		)
+	def instrument_identification(self):
+		return self._send_request("ID")
 
-	def stop(self):
-		self.stop_button.click()
+	@property
+	def software_version(self):
+		return self._send_request("SW")
 
 	def go_home(self):
-		self.go_home_button.click()
+		self._send_command("GH")
+
+	def go_to(self, angle: int | float):
+		self._send_command("GT", f"{angle:+.2f}")
 
 	@property
-	def error(self) -> Optional[str]:
-		value = self.error_edit.get_value()
+	def speed(self):
+		return self.current_parameters["speed"]
 
-		if value == "":
-			return None
-
-		return value
-
-	def clear_error(self):
-		self.clear_button.click()
+	@speed.setter
+	def speed(self, value: int):
+		self._send_command("TR", f"{value:+.2f}")
 
 	@property
-	def go_to_angle(self) -> float:
-		return self._parse_angle(self.go_to_angle_edit.get_value())
+	def acceleration(self):
+		return self.current_parameters["acceleration"]
 
-	@go_to_angle.setter
-	def go_to_angle(self, new_angle: int | float):
-		new_angle = float(new_angle)
-
-		if new_angle == self.go_to_angle:
-			return
-
-		self.go_to_angle_edit.set_edit_text(self._compose_angle(new_angle))
+	@acceleration.setter
+	def acceleration(self, value: int):
+		self._send_command("TA", f"{value:+.2f}")
 
 	@property
-	def go_to_speed(self) -> int:
-		return self._parse_speed(self.go_to_speed_edit.get_value())
-
-	@go_to_speed.setter
-	def go_to_speed(self, new_speed: int):
-		if self.go_to_speed == new_speed:
-			return
-
-		self.go_to_speed_edit.set_edit_text(self._compose_speed(new_speed))
-
-	@property
-	def go_to_acceleration(self) -> int:
-		return self._parse_secs(self.go_to_acceleration_edit.get_value())
-
-	@go_to_acceleration.setter
-	def go_to_acceleration(self, new_acceleration: int):
-		if self.go_to_acceleration == new_acceleration:
-			return
-
-		self.go_to_acceleration_edit.set_edit_text(self._compose_secs(new_acceleration))
-
-	def go_to(self):
-		self.go_to_button.click()
-
-	@property
-	def go_relative_angle(self) -> float:
-		return self._parse_angle(self.go_relative_angle_edit.get_value())
-
-	@go_relative_angle.setter
-	def go_relative_angle(self, new_angle: int | float):
-		new_angle = float(new_angle)
-
-		if new_angle == self.go_relative_angle:
-			return
-
-		self.go_relative_angle_edit.set_edit_text(self._compose_angle(new_angle))
-
-	@property
-	def go_relative_speed(self) -> int:
-		return self._parse_speed(self.go_relative_speed_edit.get_value())
-
-	@go_relative_speed.setter
-	def go_relative_speed(self, new_speed: int):
-		if self.go_relative_speed == new_speed:
-			return
-
-		self.go_relative_speed_edit.set_edit_text(self._compose_speed(new_speed))
-
-	@property
-	def go_relative_acceleration(self) -> int:
-		return self._parse_secs(self.go_relative_acceleration_edit.get_value())
-
-	@go_relative_acceleration.setter
-	def go_relative_acceleration(self, new_acceleration: int):
-		if self.go_relative_acceleration == new_acceleration:
-			return
-
-		self.go_relative_acceleration_edit.set_edit_text(
-			self._compose_secs(new_acceleration)
-		)
-
-	def go_relative(self):
-		self.go_relative_button.click()
-
-	@property
-	def sweep_start_angle(self) -> float:
-		return self._parse_angle(self.sweep_start_angle_edit.get_value())
-
-	@sweep_start_angle.setter
-	def sweep_start_angle(self, new_angle: int | float):
-		new_angle = float(new_angle)
-
-		if self.sweep_start_angle == new_angle:
-			return
-
-		self.sweep_start_angle_edit.set_edit_text(self._compose_angle(new_angle))
-
-	@property
-	def sweep_stop_angle(self) -> float:
-		return self._parse_angle(self.sweep_stop_angle_edit.get_value())
-
-	@sweep_stop_angle.setter
-	def sweep_stop_angle(self, new_angle: int | float):
-		new_angle = float(new_angle)
-
-		if self.sweep_stop_angle == new_angle:
-			return
-
-		self.sweep_stop_angle_edit.set_edit_text(self._compose_angle(new_angle))
-
-	@property
-	def sweep_time(self) -> int:
-		return self._parse_secs(self.sweep_time_edit.get_value())
+	def sweep_time(self):
+		return self.current_parameters["sweep_time"]
 
 	@sweep_time.setter
-	def sweep_time(self, new_time: int):
-		if self.sweep_time == new_time:
-			return
+	def sweep_time(self, value: int):
+		self._send_command("TT", f"{value:+.2f}")
 
-		self.sweep_time_edit.set_edit_text(self._compose_secs(new_time))
+	def start_sweep(self):
+		self._send_command("ST")
 
-	@property
-	def sweep_acceleration(self) -> int:
-		return self._parse_secs(self.sweep_acceleration_edit.get_value())
-
-	@sweep_acceleration.setter
-	def sweep_acceleration(self, new_acceleration: int):
-		if self.sweep_acceleration == new_acceleration:
-			return
-
-		self.sweep_acceleration_edit.set_edit_text(self._compose_secs(new_acceleration))
-
-	def sweep(self):
-		self.sweep_button.click()
+	def stop(self):
+		self._send_command("SP")
 
 	@property
-	def rotation_direction(self) -> RotationDirection:
-		if self.rotation_clockwise_radio_button.is_selected():
-			return RotationDirection.CLOCKWISE
+	def sweep_limit_a(self) -> float:
+		return self.current_parameters["sweep_limit_a"]
 
-		if self.rotation_counterclockwise_radio_button.is_selected():
-			return RotationDirection.COUNTER_CLOCKWISE
-
-		# Unreachable!
-		raise RuntimeError("No rotation direction selected")
-
-	@rotation_direction.setter
-	def rotation_direction(self, direction: RotationDirection):
-		if self.rotation_direction == direction:
-			return
-
-		if direction == RotationDirection.CLOCKWISE:
-			self.rotation_clockwise_radio_button.select()
-
-		elif direction == RotationDirection.COUNTER_CLOCKWISE:
-			self.rotation_counterclockwise_radio_button.select()
-
-		else:
-			raise ValueError(f"Invalid rotation direction: {direction}")
+	@sweep_limit_a.setter
+	def sweep_limit_a(self, value: int | float):
+		self._send_command("SA", f"{value:+.2f}")
 
 	@property
-	def rotation_speed(self) -> int:
-		return self._parse_speed(self.rotation_speed_edit.get_value())
+	def sweep_limit_b(self) -> float:
+		return self.current_parameters["sweep_limit_b"]
 
-	@rotation_speed.setter
-	def rotation_speed(self, new_speed: int):
-		if self.rotation_speed == new_speed:
-			return
+	@sweep_limit_b.setter
+	def sweep_limit_b(self, value: int | float):
+		self._send_command("SB", f"{value:+.2f}")
 
-		self.rotation_speed_edit.set_edit_text(self._compose_speed(new_speed))
+	def go_relative(self, angle: int | float):
+		self._send_command("GR", f"{angle:+.2f}")
+
+	def go_continuous_positive_direction(self):
+		self._send_command("CP")
+
+	def go_continuous_negative_direction(self):
+		self._send_command("CN")
+
+	def set_default_setup(self):
+		self._send_command("MR")
 
 	@property
-	def rotation_acceleration(self) -> int:
-		return self._parse_secs(self.rotation_acceleration_edit.get_value())
+	def angle(self):
+		return float(self._send_request("AN"))
 
-	@rotation_acceleration.setter
-	def rotation_acceleration(self, new_acceleration: int):
-		if self.rotation_acceleration == new_acceleration:
-			return
+	@property
+	def switch_positions(self):
+		return self._send_request("LP")
 
-		self.rotation_acceleration_edit.set_edit_text(
-			self._compose_secs(new_acceleration)
-		)
+	@switch_positions.setter
+	def switch_positions(self, x):
+		self._send_command("PP", str(x))
 
-	def rotate(self):
-		self.rotation_button.click()
+	@property
+	def current_parameters(self):
+		self._send_command("LR")
+
+		acceleration = float(self._read_line())
+
+		line = self._read_line().split(", ")
+		sweep_limit_a = float(line[0][1:])
+		sweep_limit_b = float(line[1][1:])
+
+		sweep_time = float(self._read_line())
+
+		speed = float(self._read_line())
+
+		return {
+			"acceleration": acceleration,
+			"sweep_limit_a": sweep_limit_a,
+			"sweep_limit_b": sweep_limit_b,
+			"sweep_time": sweep_time,
+			"speed": speed,
+		}
+
+	@property
+	def baudrate(self):
+		return self._baudrate
+
+	@baudrate.setter
+	def baudrate(self, value: int):
+		self._send_command("BR", str(value))
+		self._baudrate = value
+		self.ser.baudrate = value
 
 
-class Nor1029Controller:
+class Nor265:
 	def __init__(
 		self,
-		filename: str = r"C:\Program Files (x86)\Norsonic\Nor1029\nor1029.exe",
+		port: str,
 		timeout: int = 300,
 	):
-		self.sys = Nor1029Sys(filename, timeout)
+		self.sys = Nor265Sys(port, timeout)
 		self.sys.open()
 		self.timeout = timeout
 
@@ -361,72 +273,62 @@ class Nor1029Controller:
 		return self.sys.angle
 
 	@property
-	def rotations(self) -> float:
-		return self.sys.rotation
-
-	@property
 	def is_moving(self) -> bool:
-		return not self.sys.go_to_button.is_enabled()
+		return self.sys.status["motor_status"] == MotorStatus.BUSY
 
 	def _wait_start(self):
-		if self.is_moving:
-			return True
-
-		# Command is sent
-		self.sys.go_to_button.wait_not("enabled", timeout=self.timeout)
-		self.sys.go_to_button.wait("enabled", timeout=self.timeout)
-
-		# Starts moving
-		try:
-			self.sys.go_to_button.wait_not("enabled", timeout=1)
-		except TimeoutError:
-			# If it doesn't start moving, we assume no movement was necessary
-			return False
-
-		return True
+		while not self.is_moving:
+			sleep(0.01)
 
 	def _wait_ready(self):
-		if self._wait_start():
-			# Wait for the movement to finish
-			self.sys.go_to_button.wait_not("enabled", timeout=self.timeout)
+		while self.is_moving:
+			sleep(0.01)
 
 	def start_rotate(
-		self, angle: int | float, speed: int = None, acceleration: int = None
+		self,
+		angle: int | float,
+		speed: Optional[int] = None,
+		acceleration: Optional[int] = None,
 	):
-		self.sys.go_to_angle = angle
-
 		if speed is not None:
-			self.sys.go_to_speed = speed
+			self.sys.speed = speed
 
 		if acceleration is not None:
-			self.sys.go_to_acceleration = acceleration
+			self.sys.acceleration = acceleration
 
-		self.sys.go_to()
+		self.sys.go_to(angle)
 
-		self._wait_start()
-
-	def rotate(self, angle: int | float, speed: int = None, acceleration: int = None):
+	def rotate(
+		self,
+		angle: int | float,
+		speed: Optional[int] = None,
+		acceleration: Optional[int] = None,
+	):
 		self.start_rotate(angle, speed, acceleration)
 
 		self._wait_ready()
 
 	def start_rotate_relative(
-		self, angle: int | float, speed: int = None, acceleration: int = None
+		self,
+		angle: int | float,
+		speed: Optional[int] = None,
+		acceleration: Optional[int] = None,
 	):
-		self.sys.go_relative_angle = angle
-
 		if speed is not None:
-			self.sys.go_relative_speed = speed
+			self.sys.speed = speed
 
 		if acceleration is not None:
-			self.sys.go_relative_acceleration = acceleration
+			self.sys.acceleration = acceleration
 
-		self.sys.go_relative()
+		self.sys.go_relative(angle)
 
 		self._wait_start()
 
 	def rotate_relative(
-		self, angle: int | float, speed: int = None, acceleration: int = None
+		self,
+		angle: int | float,
+		speed: Optional[int] = None,
+		acceleration: Optional[int] = None,
 	):
 		self.start_rotate_relative(angle, speed, acceleration)
 
@@ -437,17 +339,17 @@ class Nor1029Controller:
 		start_angle: int | float,
 		stop_angle: int | float,
 		duration: int,
-		acceleration: int = None,
+		acceleration: Optional[int] = None,
 	):
-		self.sys.sweep_start_angle = start_angle
-		self.sys.sweep_stop_angle = stop_angle
+		if acceleration is not None:
+			self.sys.acceleration = acceleration
+
+		self.sys.sweep_limit_a = start_angle
+		self.sys.sweep_limit_b = stop_angle
 
 		self.sys.sweep_time = duration
 
-		if acceleration is not None:
-			self.sys.sweep_acceleration = acceleration
-
-		self.sys.sweep()
+		self.sys.start_sweep()
 
 		self._wait_start()
 
@@ -456,24 +358,31 @@ class Nor1029Controller:
 		start_angle: int | float,
 		stop_angle: int | float,
 		duration: int,
-		acceleration: int = None,
+		acceleration: Optional[int] = None,
 	):
 		self.start_sweep(start_angle, stop_angle, duration, acceleration)
 
 		self._wait_ready()
 
 	def start_continuous_rotation(
-		self, direction: RotationDirection, speed: int = None, acceleration: int = None
+		self,
+		direction: RotationDirection,
+		speed: Optional[int] = None,
+		acceleration: Optional[int] = None,
 	):
-		self.sys.rotation_direction = direction
-
 		if speed is not None:
-			self.sys.rotation_speed = speed
+			self.sys.speed = speed
 
 		if acceleration is not None:
-			self.sys.rotation_acceleration = acceleration
+			self.sys.acceleration = acceleration
 
-		self.sys.rotate()
+		match direction:
+			case RotationDirection.CLOCKWISE:
+				self.sys.go_continuous_positive_direction()
+			case RotationDirection.COUNTER_CLOCKWISE:
+				self.sys.go_continuous_negative_direction()
+			case _:
+				raise ValueError("Invalid rotation direction")
 
 		self._wait_start()
 

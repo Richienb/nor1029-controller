@@ -2,7 +2,7 @@
 
 > Programmatically control Norsonic Nor1029
 
-The [Nor265(A) microphone boom / turntable](https://www.norsonic.com/products/noise-sources/nor265a-microphone-boom/) is controlled by its proprietary Nor1029 software (see downloads section of product page). After installing and configuring it, you can control the hardware programmatically using this library, which launches and interacts with the GUI.
+The [Nor265(A) microphone boom / turntable](https://www.norsonic.com/products/noise-sources/nor265a-microphone-boom/) can be controlled by its proprietary Nor1029 software (see downloads section of product page). You can instead control the hardware programmatically over serial using this library.
 
 # Install
 
@@ -13,21 +13,19 @@ pip install nor1029-controller
 # Usage
 
 ```py
-from nor1029_controller import Nor1029Controller
+from nor1029_controller import Nor265
 
-with Nor1029Controller() as nor:
+with Nor265() as nor:
     nor.rotate(180, speed=10, acceleration=2)
 ```
 
 # API
 
-## Nor1029Controller(filename?, timeout?)
+## Nor265(port?, timeout?)
 
-### filename
+### port
 
-Path to `nor1029.exe`.
-
-Default: `"C:\Program Files (x86)\Norsonic\Nor1029\nor1029.exe"`
+The serial port to connect to.
 
 ### timeout
 
@@ -37,7 +35,7 @@ Default: `300` (5 minutes)
 
 ## nor
 
-`Nor1029Controller` instance.
+`Nor265` instance.
 
 ### .angle
 
@@ -60,10 +58,10 @@ Oscillate between two angles.
 ### .start_continuous_rotation(direction, speed?, acceleration?)
 
 ```py
-from nor1029_controller import Nor1029Controller, RotationDirection
+from nor1029_controller import Nor265, RotationDirection
 import time
 
-with Nor1029Controller() as nor:
+with Nor265() as nor:
     nor.start_continuous_rotation(
         direction=RotationDirection.CLOCKWISE,
         speed=10,
@@ -101,9 +99,9 @@ Rotate back to the home position.
 If you're not using a context manager, you should instead call this method when you are done.
 
 ```py
-from nor1029_controller import Nor1029Controller
+from nor1029_controller import Nor265
 
-nor = Nor1029Controller()
+nor = Nor265()
 
 nor.rotate(180, speed=10, acceleration=2)
 
