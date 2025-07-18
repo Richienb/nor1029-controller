@@ -1,6 +1,6 @@
 # nor1029-controller
 
-> Programmatically control Norsonic Nor1029
+> Programmatically control Norsonic Nor265 microphone boom / turntable
 
 The [Nor265(A) microphone boom / turntable](https://www.norsonic.com/products/noise-sources/nor265a-microphone-boom/) can be controlled by its proprietary Nor1029 software (see downloads section of product page). You can instead control the hardware programmatically over serial using this library.
 
