@@ -370,14 +370,25 @@ class Nor1029Controller:
 
 	def _wait_start(self):
 		if self.is_moving:
-			return
+			return True
 
+		# Command is sent
 		self.sys.go_to_button.wait_not("enabled", timeout=self.timeout)
+		self.sys.go_to_button.wait("enabled", timeout=self.timeout)
+
+		# Starts moving
+		try:
+			self.sys.go_to_button.wait_not("enabled", timeout=1)
+		except TimeoutError:
+			# If it doesn't start moving, we assume no movement was necessary
+			return False
+
+		return True
 
 	def _wait_ready(self):
-		self._wait_start()
-
-		self.sys.go_to_button.wait("enabled", timeout=self.timeout)
+		if self._wait_start():
+			# Wait for the movement to finish
+			self.sys.go_to_button.wait_not("enabled", timeout=self.timeout)
 
 	def start_rotate(
 		self, angle: int | float, speed: int = None, acceleration: int = None
