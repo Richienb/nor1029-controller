@@ -103,6 +103,8 @@ class Nor265Sys:
 
 		self.ser.write(message.encode())
 
+		self.ser.flush()
+
 	def _read_line(self):
 		return self.ser.readline().decode().strip()
 
