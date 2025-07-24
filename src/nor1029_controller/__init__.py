@@ -120,6 +120,10 @@ class Nor265Sys:
 		self._send_command("IR")
 
 	@property
+	def errors(self):
+		return self.status["errors"]
+
+	@property
 	def status(self):
 		response = self._send_request("FS")
 
@@ -260,11 +264,34 @@ class Nor265:
 		port: str,
 		timeout: int = 300,
 	):
-		self.sys = Nor265Sys(port, timeout)
-		self.sys.open()
 		self.timeout = timeout
 
+		self.sys = Nor265Sys(port, self.timeout)
+		self.sys.open()
+
+		self._previous_errors = self.sys.errors
+
 		# TODO: Catch KeyboardInterrupt, and call .stop()
+
+	def _throw_if_new_errors(self):
+		current_errors = self.sys.errors
+		reversed_current_errors = reversed(current_errors)
+
+		new_errors = []
+
+		for previous_error, current_error in zip(reversed(self._previous_errors), reversed_current_errors):
+			if previous_error != current_error:
+				new_errors.append(current_error)
+
+		# Remaining errors
+		new_errors.extend(reversed_current_errors)
+
+		if len(new_errors) == 0:
+			return
+
+		raise ExceptionGroup("Upstream error", [
+			RuntimeError(error.value) for error in new_errors
+		])
 
 	@property
 	def angle(self) -> float:
@@ -277,6 +304,8 @@ class Nor265:
 	def _wait_ready(self):
 		while self.is_moving:
 			sleep(0.01)
+
+		self._throw_if_new_errors()
 
 	def start_rotate(
 		self,
@@ -291,6 +320,8 @@ class Nor265:
 			self.sys.acceleration = acceleration
 
 		self.sys.go_to(angle)
+
+		self._throw_if_new_errors()
 
 	def rotate(
 		self,
@@ -315,6 +346,8 @@ class Nor265:
 			self.sys.acceleration = acceleration
 
 		self.sys.go_relative(angle)
+
+		self._throw_if_new_errors()
 
 	def rotate_relative(
 		self,
@@ -342,6 +375,8 @@ class Nor265:
 		self.sys.sweep_time = duration
 
 		self.sys.start_sweep()
+
+		self._throw_if_new_errors()
 
 	def sweep(
 		self,
@@ -373,6 +408,8 @@ class Nor265:
 				self.sys.go_continuous_negative_direction()
 			case _:
 				raise ValueError("Invalid rotation direction")
+
+		self._throw_if_new_errors()
 
 	def stop(self):
 		self.sys.stop()
