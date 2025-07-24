@@ -274,10 +274,6 @@ class Nor265:
 	def is_moving(self) -> bool:
 		return self.sys.status["motor_status"] == MotorStatus.BUSY
 
-	def _wait_start(self):
-		while not self.is_moving:
-			sleep(0.01)
-
 	def _wait_ready(self):
 		while self.is_moving:
 			sleep(0.01)
@@ -320,8 +316,6 @@ class Nor265:
 
 		self.sys.go_relative(angle)
 
-		self._wait_start()
-
 	def rotate_relative(
 		self,
 		angle: int | float,
@@ -348,8 +342,6 @@ class Nor265:
 		self.sys.sweep_time = duration
 
 		self.sys.start_sweep()
-
-		self._wait_start()
 
 	def sweep(
 		self,
@@ -381,8 +373,6 @@ class Nor265:
 				self.sys.go_continuous_negative_direction()
 			case _:
 				raise ValueError("Invalid rotation direction")
-
-		self._wait_start()
 
 	def stop(self):
 		self.sys.stop()
