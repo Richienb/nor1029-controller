@@ -84,17 +84,16 @@ class Nor265Sys:
 	def __init__(self, port, timeout, baudrate=9600):
 		self.port = port
 		self.timeout = timeout
-		self._baudrate = baudrate
-
-	def open(self):
 		self.ser = serial.Serial(
-			port=self.port,
-			baudrate=self._baudrate,
+			baudrate=baudrate,
 			bytesize=serial.EIGHTBITS,
 			parity=serial.PARITY_NONE,
 			stopbits=serial.STOPBITS_ONE,
 			timeout=self.timeout,
 		)
+
+	def open(self):
+		self.ser.open(self.port)
 
 	def _send_command(self, command: str, parameter: Optional[str] = None):
 		if parameter is None:
@@ -247,12 +246,11 @@ class Nor265Sys:
 
 	@property
 	def baudrate(self):
-		return self._baudrate
+		return self.ser.baudrate
 
 	@baudrate.setter
 	def baudrate(self, value: int):
 		self._send_command("BR", str(value))
-		self._baudrate = value
 		self.ser.baudrate = value
 
 
