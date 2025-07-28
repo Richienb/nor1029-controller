@@ -41,10 +41,6 @@ Default: `300` (5 minutes)
 
 *readonly*
 
-### .rotations
-
-*readonly*
-
 Optional parameters will default to whatever was previously set.
 
 ### .rotate(angle, speed?, acceleration?)
