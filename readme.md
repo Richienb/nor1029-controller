@@ -15,13 +15,13 @@ pip install nor1029-controller
 ```py
 from nor1029_controller import Nor265
 
-with Nor265() as nor:
+with Nor265('/dev/serial.0') as nor:
     nor.rotate(180, speed=10, acceleration=2)
 ```
 
 # API
 
-## Nor265(port?, timeout?)
+## Nor265(port, timeout?)
 
 ### port
 
@@ -97,11 +97,24 @@ If you're not using a context manager, you should instead call this method when 
 ```py
 from nor1029_controller import Nor265
 
-nor = Nor265()
+nor = Nor265('/dev/serial.0')
 
 nor.rotate(180, speed=10, acceleration=2)
 
 nor.close()
+```
+
+## list_ports()
+
+Scan for available serial ports (according to their description).
+
+```py
+from nor1029_controller import Nor265, list_ports
+
+port = list_ports()[0].device
+
+with Nor265(port) as nor:
+    nor.rotate(180, speed=10, acceleration=2)
 ```
 
 ## RotationDirection

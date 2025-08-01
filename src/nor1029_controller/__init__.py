@@ -2,7 +2,9 @@ from time import sleep
 from typing import Optional
 
 import serial
+from serial.tools.list_ports import grep as grep_ports
 from enum import Enum
+import logging
 
 
 class RotationDirection(Enum):
@@ -79,34 +81,51 @@ errorMap = {
 	# "@": None,  # OK – no error detected
 }
 
+logger = logging.getLogger(__package__)
 
 class Nor265Sys:
 	def __init__(self, port, timeout, baudrate=9600):
-		self.port = port
+		self._port = port
+		self._baudrate = baudrate
 		self.timeout = timeout
-		self.ser = serial.Serial(
-			baudrate=baudrate,
-			bytesize=serial.EIGHTBITS,
-			parity=serial.PARITY_NONE,
-			stopbits=serial.STOPBITS_ONE,
-			timeout=self.timeout,
-		)
+		self.serial = None
 
 	def open(self):
-		self.ser.open(self.port)
-
-	def _send_command(self, command: str, parameter: Optional[str] = None):
-		if parameter is None:
-			message = f"${command};"
+		if self.serial is None:
+			self.serial = serial.Serial(
+				port=self._port,
+				baudrate=self._baudrate,
+				bytesize=serial.EIGHTBITS,
+				parity=serial.PARITY_NONE,
+				stopbits=serial.STOPBITS_ONE,
+				timeout=self.timeout,
+				dsrdtr=True,
+			)
 		else:
-			message = f"${command} {parameter};"
+			self.serial.open()
 
-		self.ser.write(message.encode())
+		logging.debug(f"Serial port opened on {self._port}")
 
-		self.ser.flush()
+	def _send_command(
+		self, command: str, parameter: Optional[str | int | float] = None
+	):
+		if parameter is None:
+			message = f"{command};"
+		else:
+			message = f"{command} {parameter};"
+
+		logging.debug(f"Sending command: {message}")
+
+		self.serial.write(message.encode())
+
+		self.serial.flush()
 
 	def _read_line(self):
-		return self.ser.readline().decode().strip()
+		line = self.serial.readline().decode().strip()
+
+		logging.debug(f"Received line: {line}")
+
+		return line
 
 	def _send_request(self, command: str, parameter: Optional[str] = None) -> str:
 		self._send_command(command, parameter)
@@ -116,7 +135,9 @@ class Nor265Sys:
 		return response
 
 	def close(self):
-		self.ser.close()
+		self.serial.close()
+
+		logging.debug(f"Serial port closed on {self._port}")
 
 	def reset(self):
 		self._send_command("IR")
@@ -156,7 +177,7 @@ class Nor265Sys:
 		self._send_command("GH")
 
 	def go_to(self, angle: int | float):
-		self._send_command("GT", f"{angle:+.2f}")
+		self._send_command("GT", angle)
 
 	@property
 	def speed(self):
@@ -164,7 +185,7 @@ class Nor265Sys:
 
 	@speed.setter
 	def speed(self, value: int):
-		self._send_command("TR", f"{value:+.2f}")
+		self._send_command("TR", value)
 
 	@property
 	def acceleration(self):
@@ -172,7 +193,7 @@ class Nor265Sys:
 
 	@acceleration.setter
 	def acceleration(self, value: int):
-		self._send_command("TA", f"{value:+.2f}")
+		self._send_command("TA", value)
 
 	@property
 	def sweep_time(self):
@@ -180,7 +201,7 @@ class Nor265Sys:
 
 	@sweep_time.setter
 	def sweep_time(self, value: int):
-		self._send_command("TT", f"{value:+.2f}")
+		self._send_command("TT", value)
 
 	def start_sweep(self):
 		self._send_command("ST")
@@ -194,7 +215,7 @@ class Nor265Sys:
 
 	@sweep_limit_a.setter
 	def sweep_limit_a(self, value: int | float):
-		self._send_command("SA", f"{value:+.2f}")
+		self._send_command("SA", value)
 
 	@property
 	def sweep_limit_b(self) -> float:
@@ -202,10 +223,10 @@ class Nor265Sys:
 
 	@sweep_limit_b.setter
 	def sweep_limit_b(self, value: int | float):
-		self._send_command("SB", f"{value:+.2f}")
+		self._send_command("SB", value)
 
 	def go_relative(self, angle: int | float):
-		self._send_command("GR", f"{angle:+.2f}")
+		self._send_command("GR", angle)
 
 	def go_continuous_positive_direction(self):
 		self._send_command("CP")
@@ -226,7 +247,7 @@ class Nor265Sys:
 
 	@switch_positions.setter
 	def switch_positions(self, x):
-		self._send_command("PP", str(x))
+		self._send_command("PP", x)
 
 	@property
 	def current_parameters(self):
@@ -252,12 +273,12 @@ class Nor265Sys:
 
 	@property
 	def baudrate(self):
-		return self.ser.baudrate
+		return self.serial.baudrate
 
 	@baudrate.setter
 	def baudrate(self, value: int):
-		self._send_command("BR", str(value))
-		self.ser.baudrate = value
+		self._send_command("BR", value)
+		self.serial.baudrate = value
 
 
 class Nor265:
@@ -281,7 +302,9 @@ class Nor265:
 
 		new_errors = []
 
-		for previous_error, current_error in zip(reversed(self._previous_errors), reversed_current_errors):
+		for previous_error, current_error in zip(
+			reversed(self._previous_errors), reversed_current_errors
+		):
 			if previous_error != current_error:
 				new_errors.append(current_error)
 
@@ -291,9 +314,9 @@ class Nor265:
 		if len(new_errors) == 0:
 			return
 
-		raise ExceptionGroup("Upstream error", [
-			RuntimeError(error.value) for error in new_errors
-		])
+		raise ExceptionGroup(
+			"Upstream error", [RuntimeError(error.value) for error in new_errors]
+		)
 
 	@property
 	def angle(self) -> float:
@@ -429,3 +452,7 @@ class Nor265:
 
 	def __exit__(self, exc_type, exc_value, traceback):
 		self.close()
+
+
+def list_ports():
+	return list(grep_ports("serial"))
