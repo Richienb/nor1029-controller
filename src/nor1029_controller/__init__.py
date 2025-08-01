@@ -390,7 +390,7 @@ class Nor265:
 		self,
 		start_angle: int | float,
 		stop_angle: int | float,
-		duration: int,
+		period: int,
 		acceleration: Optional[int] = None,
 	):
 		if acceleration is not None:
@@ -403,23 +403,12 @@ class Nor265:
 		self.sys.sweep_limit_b = stop_angle
 		self._throw_if_new_errors()
 
-		self.sys.sweep_time = duration
+		self.sys.sweep_time = period
 		self._throw_if_new_errors()
 
 		self.sys.start_sweep()
 
 		self._throw_if_new_errors()
-
-	def sweep(
-		self,
-		start_angle: int | float,
-		stop_angle: int | float,
-		duration: int,
-		acceleration: Optional[int] = None,
-	):
-		self.start_sweep(start_angle, stop_angle, duration, acceleration)
-
-		self._wait_ready()
 
 	def start_continuous_rotation(
 		self,

@@ -47,7 +47,7 @@ Optional parameters will default to whatever was previously set.
 
 ### .rotate_relative(angle, speed?, acceleration?)
 
-### .sweep(start_angle, stop_angle, duration, acceleration?)
+### .start_sweep(start_angle, stop_angle, period, acceleration?)
 
 Oscillate between two angles.
 
@@ -73,8 +73,6 @@ with Nor265() as nor:
 ### .start_rotate(angle, speed?, acceleration?)
 
 ### .start_rotate_relative(angle, speed?, acceleration?)
-
-### .start_sweep(start_angle, stop_angle, duration, acceleration?)
 
 The `start_*` methods will return when the movement starts, while the regular methods will also wait for the movement to finish.
 
