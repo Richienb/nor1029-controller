@@ -83,6 +83,7 @@ errorMap = {
 
 logger = logging.getLogger(__package__)
 
+
 class Nor265Sys:
 	def __init__(self, port, timeout, baudrate=9600):
 		self._port = port
