@@ -102,6 +102,35 @@ nor.rotate(180, speed=10, acceleration=2)
 nor.close()
 ```
 
+### .wait_stopped(timeout?, poll_interval?)
+
+Wait until it is not moving.
+
+`.rotate()` and `.rotate_relative()` do this automatically.
+
+#### timeout
+
+The maximum time to wait in seconds.
+
+Default: `None` (no timeout)
+
+#### poll_interval
+
+The interval between each check in seconds.
+
+Default: `0.01` (10 milliseconds)
+
+```py
+from nor1029_controller import Nor265
+
+with Nor265('/dev/serial.0') as nor:
+    nor.start_rotate(180, speed=10, acceleration=2)
+    
+    # ...
+    
+    nor.wait_stopped(timeout=10)
+```
+
 ## list_ports()
 
 Scan for available serial ports (according to their description).

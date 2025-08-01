@@ -144,3 +144,21 @@ def test_start_sweep(nor: Nor265):
 	sleep(10)
 
 	assert nor.is_moving
+
+
+def test_wait_stopped(nor: Nor265):
+	nor.start_rotate(90)
+	assert nor.is_moving
+
+	nor.wait_stopped()
+
+	assert_stopped_at_angle(nor, 90)
+
+	nor.start_rotate_relative(90)
+	assert nor.is_moving
+
+	with pytest.raises(TimeoutError):
+		nor.wait_stopped(timeout=1)
+
+	nor.wait_stopped(timeout=10)
+	assert_stopped_at_angle(nor, 180)

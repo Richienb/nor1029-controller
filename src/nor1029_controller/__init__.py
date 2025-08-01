@@ -1,4 +1,4 @@
-from time import sleep
+from time import sleep, time
 from typing import Optional
 
 import serial
@@ -324,9 +324,24 @@ class Nor265:
 	def is_moving(self) -> bool:
 		return self.sys.status["motor_status"] == MotorStatus.BUSY
 
-	def _wait_ready(self):
+	def wait_stopped(self, timeout: Optional[int] = None, poll_interval: float = 0.01):
+		if timeout is not None:
+			start_time = time()
+
+			while self.is_moving:
+				elapsed_time = time() - start_time
+
+				if elapsed_time > timeout:
+					raise TimeoutError(
+						"Rotation did not stop within the timeout period"
+					)
+
+				sleep(poll_interval)
+
+			return
+
 		while self.is_moving:
-			sleep(0.01)
+			sleep(poll_interval)
 
 		self._throw_if_new_errors()
 
@@ -356,7 +371,7 @@ class Nor265:
 	):
 		self.start_rotate(angle, speed, acceleration)
 
-		self._wait_ready()
+		self.wait_stopped()
 
 	def start_rotate_relative(
 		self,
@@ -384,7 +399,7 @@ class Nor265:
 	):
 		self.start_rotate_relative(angle, speed, acceleration)
 
-		self._wait_ready()
+		self.wait_stopped()
 
 	def start_sweep(
 		self,
@@ -436,11 +451,11 @@ class Nor265:
 
 	def stop(self):
 		self.sys.stop()
-		self._wait_ready()
+		self.wait_stopped()
 
 	def go_home(self):
 		self.sys.go_home()
-		self._wait_ready()
+		self.wait_stopped()
 
 	def close(self):
 		self.sys.close()
