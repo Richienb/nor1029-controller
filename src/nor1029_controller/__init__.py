@@ -85,10 +85,9 @@ logger = logging.getLogger(__package__)
 
 
 class Nor265Sys:
-	def __init__(self, port, timeout, baudrate=9600):
+	def __init__(self, port, baudrate=9600):
 		self._port = port
 		self._baudrate = baudrate
-		self.timeout = timeout
 		self.serial = None
 
 	def open(self):
@@ -99,7 +98,6 @@ class Nor265Sys:
 				bytesize=serial.EIGHTBITS,
 				parity=serial.PARITY_NONE,
 				stopbits=serial.STOPBITS_ONE,
-				timeout=self.timeout,
 				dsrdtr=True,
 				rtscts=True,
 			)
@@ -287,11 +285,8 @@ class Nor265:
 	def __init__(
 		self,
 		port: str,
-		timeout: int = 300,
 	):
-		self.timeout = timeout
-
-		self.sys = Nor265Sys(port, self.timeout)
+		self.sys = Nor265Sys(port)
 		self.sys.open()
 
 		# Flush errors by reading them

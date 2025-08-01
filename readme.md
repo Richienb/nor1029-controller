@@ -21,17 +21,11 @@ with Nor265('/dev/serial.0') as nor:
 
 # API
 
-## Nor265(port, timeout?)
+## Nor265(port)
 
 ### port
 
 The serial port to connect to.
-
-### timeout
-
-Timeout for operations in seconds.
-
-Default: `300` (5 minutes)
 
 ## nor
 
