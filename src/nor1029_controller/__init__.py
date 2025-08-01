@@ -101,6 +101,7 @@ class Nor265Sys:
 				stopbits=serial.STOPBITS_ONE,
 				timeout=self.timeout,
 				dsrdtr=True,
+				rtscts=True,
 			)
 		else:
 			self.serial.open()
