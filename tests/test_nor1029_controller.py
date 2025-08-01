@@ -27,6 +27,8 @@ def test_rotate(nor: Nor265):
 	nor.rotate(90)
 	assert nor.angle == 90
 
+	nor.rotate(-90)
+	assert nor.angle == -90
 
 def test_start_rotate(nor: Nor265):
 	nor.start_rotate(180)
