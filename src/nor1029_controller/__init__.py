@@ -297,8 +297,6 @@ class Nor265:
 		# Flush errors by reading them
 		_ = self.sys.errors
 
-		# TODO: Catch KeyboardInterrupt, and call .stop()
-
 	def _throw_if_new_errors(self):
 		# Errors are cleared after receiving them
 		new_errors = self.sys.errors
