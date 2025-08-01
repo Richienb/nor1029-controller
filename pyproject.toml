@@ -1,6 +1,6 @@
 [project]
 name = "nor1029-controller"
-version = "0.3.0"
+version = "0.4.0"
 description = "Programmatically control Norsonic Nor1029"
 readme = "readme.md"
 authors = [
