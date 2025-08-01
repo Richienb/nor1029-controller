@@ -278,6 +278,7 @@ class Nor265Sys:
 	@baudrate.setter
 	def baudrate(self, value: int):
 		self._send_command("BR", value)
+		self._baudrate = value
 		self.serial.baudrate = value
 
 
