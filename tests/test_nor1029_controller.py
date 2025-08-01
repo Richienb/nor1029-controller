@@ -17,11 +17,13 @@ def nor():
 @pytest.fixture(autouse=True)
 def between_test(nor: Nor265):
 	nor.stop()
+	assert not nor.is_moving
+
 	nor.rotate(0)
+	assert nor.angle == 0
 
 
 def test_rotate(nor: Nor265):
-	assert nor.angle == 0
 	nor.rotate(90)
 	assert nor.angle == 90
 
