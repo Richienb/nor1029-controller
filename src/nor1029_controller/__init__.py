@@ -154,7 +154,7 @@ class Nor265Sys:
 
 		errors = []
 
-		for error_code in response[4:7]:
+		for error_code in response[4:8]:
 			error = errorMap.get(error_code, None)
 
 			if error is not None:
@@ -294,27 +294,23 @@ class Nor265:
 		self.sys = Nor265Sys(port, self.timeout)
 		self.sys.open()
 
-		self._previous_errors = self.sys.errors
+		# Flush errors by reading them
+		_ = self.sys.errors
 
 		# TODO: Catch KeyboardInterrupt, and call .stop()
 
 	def _throw_if_new_errors(self):
-		current_errors = self.sys.errors
-		reversed_current_errors = reversed(current_errors)
-
-		new_errors = []
-
-		for previous_error, current_error in zip(
-			reversed(self._previous_errors), reversed_current_errors
-		):
-			if previous_error != current_error:
-				new_errors.append(current_error)
-
-		# Remaining errors
-		new_errors.extend(reversed_current_errors)
+		# Errors are cleared after receiving them
+		new_errors = self.sys.errors
 
 		if len(new_errors) == 0:
 			return
+
+		if len(new_errors) == 1:
+			raise RuntimeError(new_errors[0].value)
+
+		# Newest errors are at the front
+		new_errors = reversed(new_errors)
 
 		raise ExceptionGroup(
 			"Upstream error", [RuntimeError(error.value) for error in new_errors]
@@ -342,9 +338,11 @@ class Nor265:
 	):
 		if speed is not None:
 			self.sys.speed = speed
+			self._throw_if_new_errors()
 
 		if acceleration is not None:
 			self.sys.acceleration = acceleration
+			self._throw_if_new_errors()
 
 		self.sys.go_to(angle)
 
@@ -368,9 +366,11 @@ class Nor265:
 	):
 		if speed is not None:
 			self.sys.speed = speed
+			self._throw_if_new_errors()
 
 		if acceleration is not None:
 			self.sys.acceleration = acceleration
+			self._throw_if_new_errors()
 
 		self.sys.go_relative(angle)
 
@@ -395,11 +395,16 @@ class Nor265:
 	):
 		if acceleration is not None:
 			self.sys.acceleration = acceleration
+			self._throw_if_new_errors()
 
 		self.sys.sweep_limit_a = start_angle
+		self._throw_if_new_errors()
+
 		self.sys.sweep_limit_b = stop_angle
+		self._throw_if_new_errors()
 
 		self.sys.sweep_time = duration
+		self._throw_if_new_errors()
 
 		self.sys.start_sweep()
 
@@ -424,9 +429,11 @@ class Nor265:
 	):
 		if speed is not None:
 			self.sys.speed = speed
+			self._throw_if_new_errors()
 
 		if acceleration is not None:
 			self.sys.acceleration = acceleration
+			self._throw_if_new_errors()
 
 		match direction:
 			case RotationDirection.CLOCKWISE:
