@@ -109,6 +109,7 @@ Scan for available serial ports (according to their description).
 ```py
 from nor1029_controller import Nor265, list_ports
 
+# Pick first serial port
 port = list_ports()[0].device
 
 with Nor265(port) as nor:
