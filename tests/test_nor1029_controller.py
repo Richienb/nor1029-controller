@@ -1,12 +1,12 @@
 import pytest
 from time import sleep
-from nor1029_controller import Nor265, list_ports, RotationDirection
+from nor1029_controller import Nor265, RotationDirection
 
 
 @pytest.fixture(scope="session")
-def nor():
+def nor(pytestconfig):
 	# Setup
-	port = list_ports()[0].device
+	port = pytestconfig.getoption("port")
 	nor = Nor265(port)
 
 	yield nor
