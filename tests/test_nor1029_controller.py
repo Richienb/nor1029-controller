@@ -145,6 +145,12 @@ def test_start_sweep(nor: Nor265):
 
 	assert nor.is_moving
 
+	nor.stop()
+	assert not nor.is_moving
+
+	with pytest.raises(RuntimeError):
+		nor.start_sweep(0, 180, 5)
+
 
 def test_wait_stopped(nor: Nor265):
 	nor.start_rotate(90)
