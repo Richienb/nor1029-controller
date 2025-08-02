@@ -5,14 +5,10 @@ from nor1029_controller import Nor265, RotationDirection
 
 @pytest.fixture(scope="session")
 def nor(pytestconfig):
-	# Setup
 	port = pytestconfig.getoption("port")
-	nor = Nor265(port)
 
-	yield nor
-
-	# Teardown
-	nor.close()
+	with Nor265(port) as nor:
+		yield nor
 
 
 def assert_stopped_at_angle(nor: Nor265, angle: float | int):
