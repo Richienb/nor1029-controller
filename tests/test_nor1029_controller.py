@@ -15,18 +15,18 @@ def nor():
 	nor.close()
 
 
+def assert_stopped_at_angle(nor: Nor265, angle: float | int):
+	assert not nor.is_moving
+	assert nor.angle == angle
+
+
 @pytest.fixture(autouse=True)
 def between_test(nor: Nor265):
 	nor.stop()
 	assert not nor.is_moving
 
 	nor.rotate(0)
-	assert nor.angle == 0
-
-
-def assert_stopped_at_angle(nor: Nor265, angle: float | int):
-	assert nor.angle == angle
-	assert not nor.is_moving
+	assert_stopped_at_angle(nor, 0)
 
 
 def test_rotate(nor: Nor265):
