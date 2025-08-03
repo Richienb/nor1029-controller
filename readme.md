@@ -123,9 +123,16 @@ with Nor265('/dev/serial.0') as nor:
     nor.wait_stopped(timeout=10)
 ```
 
-## list_ports()
+## list_ports(search?)
 
-Scan for available serial ports (according to their description).
+Scan for available serial ports (according to their metadata).
+
+### search
+
+Regex to match against the port name.
+
+Type: `str` or `None`\
+Default: `'serial'`
 
 ```py
 from nor1029_controller import Nor265, list_ports

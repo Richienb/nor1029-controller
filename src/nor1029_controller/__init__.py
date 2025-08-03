@@ -2,7 +2,7 @@ from time import sleep, time
 from typing import Optional
 
 import serial
-from serial.tools.list_ports import grep as grep_ports
+from serial.tools.list_ports import grep as grep_ports, comports as all_ports
 from enum import Enum
 import logging
 
@@ -461,5 +461,8 @@ class Nor265:
 		self.close()
 
 
-def list_ports():
-	return list(grep_ports("serial"))
+def list_ports(search: Optional[str] = "serial"):
+	if search is None:
+		return all_ports()
+
+	return list(grep_ports(search))
