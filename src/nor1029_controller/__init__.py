@@ -466,3 +466,15 @@ def list_ports(search: Optional[str] = "serial"):
 		return all_ports()
 
 	return list(grep_ports(search))
+
+def expect_port(search: Optional[str] = "serial"):
+	ports = list_ports(search)
+
+	if len(ports) == 0:
+		raise RuntimeError(f"No serial ports found matching '{search}'")
+
+	if len(ports) > 1:
+		raise RuntimeError(f"Multiple serial ports found matching '{search}': {', '.join((port.device for port in ports))}")
+
+	return ports[0].device
+
